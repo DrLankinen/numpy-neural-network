@@ -18,28 +18,28 @@ layer_2 = 5
 layer_3 = 4
 output = 1
 
-bias_1 = np.random.randn(1, m)
+bias_1 = np.random.randn(n, m)
 
-# 5 x 3
-theta_1 = np.random.randn(layer_2, n+1)
-bias_2 = np.random.randn(1, m)
+# 5 x 2
+theta_1 = np.random.randn(layer_2, n)
+bias_2 = np.random.randn(layer_2, m)
 
-# 4 x 6
-theta_2 = np.random.randn(layer_3, layer_2+1)
-bias_3 = np.random.randn(1, m)
+# 4 x 5
+theta_2 = np.random.randn(layer_3, layer_2)
+bias_3 = np.random.randn(layer_3, m)
 
-# 1 x 5
-theta_3 = np.random.randn(output, layer_3+1)
+# 1 x 4
+theta_3 = np.random.randn(output, layer_3)
 
 steps = 10
 for i in range(steps):
     # 2 forward propagation
-    # Shape: (n+1) x m => 3 x 4
-    a_1 = np.concatenate((X, bias_1))
-    # Shape: (layer_2+1) x m => 6 x 4
-    a_2 = np.concatenate((sigmoid(theta_1 @ a_1), bias_2))
-    # Shape: (layer_3+1) x m => 5 x 4
-    a_3 = np.concatenate((sigmoid(theta_2 @ a_2), bias_3))
+    # Shape: (n+1) x m => 2 x 4
+    a_1 = X + bias_1
+    # Shape: (layer_2+1) x m => 5 x 4
+    a_2 = sigmoid(theta_1 @ a_1) + bias_2
+    # Shape: (layer_3+1) x m => 4 x 4
+    a_3 = sigmoid(theta_2 @ a_2) + bias_3
     # Shape: output x m => 1 x 4
     output = theta_3 @ a_3
 
@@ -49,22 +49,22 @@ for i in range(steps):
     # output x m
     # 1 x 4
     delta_4 = output - y
-    # (layer_3+1) x output @ output x m * (layer_3+1) x m
-    # 5 x 1 @ 1 x 4 * 5 x 4 => 5 x 4
+    # layer_3 x output @ output x m * layer_3 x m
+    # 4 x 1 @ 1 x 4 * 4 x 4 => 4 x 4
     delta_3 = theta_3.T @ delta_4 * (a_3 * (1 - a_3))
-    # (layer_2+1) x layer_3 @ (layer_3+1) x m * (layer_2+1) x m
-    # 6 x 4 @ 5 x 4 * 6 x 4 => 6 x 4
+    # layer_2 x layer_3 @ layer_3 x m * layer_2 x m
+    # 5 x 4 @ 4 x 4 * 5 x 4 => 5 x 4
     delta_2 = theta_2.T @ delta_3 * (a_2 * (1 - a_2))
-    # (n+1) x layer_2 @ (layer_2+1) x m * (n+1) x m
-    # 3 x 5 @ 6 x 4 * 3 x 4 => 5 x 3
+    # n x layer_2 @ layer_2 x m * n x m
+    # 2 x 5 @ 5 x 4 * 2 x 4 => 2 x 4
     delta_1 = theta_1.T @ delta_2 * (a_1 * (1 - a_1))
 
     # 4.1 gradient checking
 
     # 5 update parameters
-    theta_2 += learning_rate * delta_2 @ a_1
-    theta_3 += learning_rate * delta_3 @ a_2
-    theta_4 += learning_rate * delta_4 @ a_3
+    theta_2 += learning_rate * delta_1
+    theta_3 += learning_rate * delta_2
+    theta_3 += learning_rate * delta_3
 
     # Analytics
     pass
