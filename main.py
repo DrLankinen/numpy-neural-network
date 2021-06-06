@@ -1,198 +1,149 @@
 import numpy as np
 
 np.random.seed(42)
-learning_rate = 0.01
+
+learning_rate = 1e-1
 gradient_checking = True
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
-def J(X, y, theta_1, bias_1, theta_2, bias_2, theta_3, bias_3):
-    a_1 = X + bias_1
-    a_2 = sigmoid(theta_1 @ a_1 + bias_2)
-    a_3 = sigmoid(theta_2 @ a_2 + bias_3)
-    output = theta_3 @ a_3
-    return output - y
+def cost(y_hat, y):
+    return np.mean([_ * _ for _ in (y_hat - y)])
+
+def forward_propagation(X, y, theta):
+    theta_1, theta_2, theta_3 = theta[0], theta[1], theta[2]
+    a_1 = np.hstack((np.ones((X.shape[0],1)), X))
+    z_2 = a_1 @ theta_1.T
+    a_2 = np.hstack((np.ones((z_2.shape[0],1)), sigmoid(z_2)))
+    z_3 = a_2 @ theta_2.T
+    a_3 = np.hstack((np.ones((z_3.shape[0],1)), sigmoid(z_3)))
+    z_4 = a_3 @ theta_3.T
+    a_4 = sigmoid(z_4)
+    output = a_4
+    return cost(output, y)
 
 def approx_assert(a, b, message="", epsilon=0.01):
-    print("a.shape:",a.shape)
-    print("b.shape:",b.shape)
-    assert (a - epsilon < b).all() and (a + epsilon > b).all(), message
+    assert a - epsilon < b and a + epsilon > b, message
+
+def normalize(d):
+    means = np.mean(d, axis=0)
+    return d - means
 
 # 0 data
-# TODO: normalize
-X = np.array([[-3.5,-1.5],[3.5,-4.5],[-2.5,-3.5],[2.5, -2]]).T
-y = np.array([8.25,9.25,0.25,-15.75]).reshape((1, 4))
-n = X.shape[0]
-m = X.shape[1]
+X = np.array([[-3.5,-1.5],[4.5,-4.5],[-2.5,-3.5],[2.5, -2]])
+X = normalize(X)
+y = np.array([2.25,3.25,0.25,-5.75]).reshape((4,1))
+y = normalize(y)
+m = X.shape[0]
+n = X.shape[1]
 
 # 1 initialize parameters
 layer_2 = 5
 layer_3 = 4
 output = 1
 
-bias_1 = np.random.rand(n, 1)
+# bias_1 = np.random.rand(m, 1)
 
-# 5 x 2
-theta_1 = np.random.rand(layer_2, n)
-bias_2 = np.random.rand(layer_2, 1)
+# 5 x 2+1
+theta_1 = np.random.rand(layer_2, n+1)
+# bias_2 = np.random.rand(m, 1)
 
-# 4 x 5
-theta_2 = np.random.rand(layer_3, layer_2)
-bias_3 = np.random.rand(layer_3, 1)
+# 4 x 5+1
+theta_2 = np.random.rand(layer_3, layer_2+1)
+# bias_3 = np.random.rand(m, 1)
 
-# 1 x 4
-theta_3 = np.random.rand(output, layer_3)
+# 1 x 4+1
+theta_3 = np.random.rand(output, layer_3+1)
 
 steps = 10
 for i in range(steps):
     # 2 forward propagation
     # Layer 1
-    # Shape: (n+1) x m => 4 x 3
-    a_1 = X + bias_1
+    # 4 x 2+1
+    a_1 = np.hstack((np.ones((X.shape[0],1)), X))
+    assert a_1.shape == (4, 3)
     # Layer 2
-    # 5 x 3 @ 3 x 4 => 5 x 4
-    z_2 = theta_1 @ a_1 + bias_2
-    # Shape: layer_2 x m => 5 x 4
-    a_2 = sigmoid(z_2)
+    # 4 x 3 @ 3 x 5 => 4 x 5
+    z_2 = a_1 @ theta_1.T
+    assert z_2.shape == (4, 5)
+    # 4 x 5+1
+    a_2 = np.hstack((np.ones((z_2.shape[0],1)), sigmoid(z_2)))
+    assert a_2.shape == (4, 6)
     # Layer 3
-    # 4 x 6 @ 5 x 4 => 4 x 4
-    z_3 = theta_2 @ a_2 + bias_3
-    # Shape: layer_3 x m => 4 x 4
-    a_3 = sigmoid(z_3)
+    # 4 x 6 @ 6 x 4 => 4 x 4
+    z_3 = a_2 @ theta_2.T
+    assert z_3.shape == (4, 4)
+    # 4 x 4+1
+    a_3 = np.hstack((np.ones((z_3.shape[0],1)), sigmoid(z_3)))
+    assert a_3.shape == (4, 5)
     # Layer 4
-    # Shape: output x m => 1 x 4
-    a_4 = theta_3 @ a_3
+    # 4 x 4+1 @ 5 x 1 => 4 x 1
+    z_4 = a_3 @ theta_3.T
+    assert z_4.shape == (4, 1)
+    # 4 x 1
+    a_4 = sigmoid(z_4)
+    assert a_4.shape == (4, 1)
     output = a_4
 
     # 3 cost function
+    print("cost:", cost(output, y))
 
     # 4 backward propagation
     # Layer 4
-    # 1 x 4
-    delta_4 = (a_4 - y) * (a_4 * (1 - a_4))
-    print("output error:",delta_4)
+    # 4 x 1
+    delta_4 = (output - y) * (a_4 * (1 - a_4))
+    assert delta_4.shape == (4, 1)
     # Layer 3
-    dZ_3 = delta_4
-    print("dZ_3:",dZ_3)
-    # 1 x 4 @ 4 x 1 => 1 x 4
-    dW_3 = dZ_3 @ a_3.T * (a_4 * (1 - a_4))
-    print("dW_3:", dW_3)
-    db_3 = np.sum(dZ_3, axis=1, keepdims=True)
+    # 4 x 1 @ 1 x 5 => 4 x 5
+    delta_3 = delta_4 @ theta_3 * np.hstack((np.ones((z_3.shape[0], 1)), (sigmoid(z_3) * (1 - sigmoid(z_3)))))
+    assert delta_3.shape == (4, 5)
+    # 1 x 4 @ 4 x 5 => 1 x 5
+    dW_3 = delta_4.T @ a_3
+    assert dW_3.shape == (1, 5)
+    # db_3 = np.sum(delta_3, axis=1, keepdims=True)
     # Layer 2
-    # 4 x 1 @ 1 x 4 => 4 x 4
-    dZ_2 = theta_3.T @ dZ_3 * (a_3 * (1 - a_3))
-    print("dZ_2:",dZ_2)
-    # 4 x 4 @ 4 x 5 => 4 x 5
-    dW_2 = dZ_2 @ a_2.T
-    print("dW_2:", dW_2)
-    db_2 = np.sum(dZ_2, axis=1, keepdims=True)
+    # 4 x 4 @ 4 x 6 => 4 x 6
+    delta_2 = delta_3[:,1:] @ theta_2 * np.hstack((np.ones((z_2.shape[0], 1)), (sigmoid(z_2) * (1 - sigmoid(z_2)))))
+    assert delta_2.shape == (4, 6)
+    # 4 x 4 @ 4 x 6 => 4 x 6
+    dW_2 = delta_3[:,1:].T @ a_2
+    assert dW_2.shape == (4, 6)
+    # db_2 = np.sum(delta_2, axis=1, keepdims=True)
     # Layer 1
-    # 5 x 4 @ 4 x 4 => 5 x 4
-    dZ_1 = theta_2.T @ dZ_2 * (a_2 * (1 - a_2))
-    print("dZ_1:",dZ_1)
-    # 5 x 4 @ 4 x 2 => 5 x 2
-    dW_1 = dZ_1 @ a_1.T
-    print("dW_1:", dW_1)
-    db_1 = np.sum(dZ_1, axis=1, keepdims=True)
+    # 5 x 4 @ 4 x 3 => 5 x 3
+    dW_1 = delta_2[:,1:].T @ a_1
+    assert dW_1.shape == (5, 3)
+    # db_1 = np.sum(delta_2, axis=1, keepdims=True)
 
     # 4.1 gradient checking
     if gradient_checking:
         epsilon = 1e-3
-        baseline = J(X, y, theta_1, bias_1, theta_2, bias_2, theta_3, bias_3)
-        assert (baseline == delta_4).all()
-        new_theta = theta_1.copy()
-        new_theta[0,0] += epsilon
-        print("ptheta:",new_theta)
-        baseline_plus = J(X, y, new_theta, bias_1, theta_2, bias_2, theta_3, bias_3)
-        new_theta[0,0] -= epsilon * 2
-        print("mtheta:",new_theta)
-        baseline_minus = J(X, y, new_theta, bias_1, theta_2, bias_2, theta_3, bias_3)
-        print("baseline_p:",baseline_plus)
-        print("baseline_m:",baseline_minus)
-        print("baseline_plus - baseline_minus:",baseline_plus - baseline_minus)
-        grad_approx = (baseline_plus - baseline_minus) / (2 * epsilon)
-        print("grad_approx:",grad_approx)
-        print("dW_3:",dW_3 * learning_rate / (2 * epsilon))
-        print("db_3:",db_3)
-        gan = np.linalg.norm(grad_approx)
-        dwn = np.linalg.norm(dW_3)
-        print("gan:",gan)
-        print("dwn:",dwn)
-        upr = np.linalg.norm(grad_approx - dW_3)
-        print("upr:",upr)
-        res = upr / (gan + dwn)
-        print('res:',res)
-        approx_assert(grad_approx, dW_3, "baseline", epsilon)
-
-        for r in range(len(theta_1)):
-            for c in range(len(theta_1[r])):
-                new_theta = theta_1.copy()
-                new_theta[r,c] = theta_1[r,c] + epsilon
-                pt = J(X, y, new_theta, bias_1, theta_2, bias_2, theta_3, bias_3)
-                print("pt:",pt)
-                new_theta[r,c] = theta_1[r,c] - epsilon * 2
-                mt = J(X, y, new_theta, bias_1, theta_2, bias_2, theta_3, bias_3)
-                print("mt:",mt)
-                grad_approx = (pt - mt) / (2 * epsilon)
-                print("grad_approx:",grad_approx)
-                print("dW_3:",dW_3)
-                approx_assert(grad_approx, dW_3, f'theta 1 => r: {r}, c: {c}', epsilon)
-        # for r in range(len(bias_1)):
-        #     for c in range(len(bias_1[r])):
-        #         new_bias = bias_1.copy()
-        #         new_bias[r,c] = bias_1[r,c] + epsilon
-        #         pt = J(X, y, theta_1, new_bias, theta_2, bias_2, theta_3, bias_3)
-        #         new_bias[r,c] = bias_1[r,c] - epsilon
-        #         mt = J(X, y, theta_1, new_bias, theta_2, bias_2, theta_3, bias_3)
-        #         grad_approx = (pt - mt) / (2 * epsilon)
-        #         approx_assert(grad_approx, db_1, f'bias 1 => r: {r}, c: {c}')
-        # #
-        # for r in range(len(theta_2)):
-        #     for c in range(len(theta_2[r])):
-        #         new_theta = theta_2.copy()
-        #         new_theta[r,c] = theta_2[r,c] + epsilon
-        #         pt = J(X, y, theta_1, bias_1, new_theta, bias_2, theta_3, bias_3)
-        #         new_theta[r,c] = theta_2[r,c] - epsilon
-        #         mt = J(X, y, theta_1, bias_1, new_theta, bias_2, theta_3, bias_3)
-        #         grad_approx = (pt - mt) / (2 * epsilon)
-        #         approx_assert(grad_approx, dW_2, f'theta 2 => r: {r}, c: {c}')
-        # for r in range(len(bias_2)):
-        #     for c in range(len(bias_2[r])):
-        #         new_bias = bias_2.copy()
-        #         new_bias[r,c] = bias_2[r,c] + epsilon
-        #         pt = J(X, y, theta_1, bias_1, theta_2, new_bias, theta_3, bias_3)
-        #         new_bias[r,c] = bias_2[r,c] - epsilon
-        #         mt = J(X, y, theta_1, bias_1, theta_2, new_bias, theta_3, bias_3)
-        #         grad_approx = (pt - mt) / (2 * epsilon)
-        #         approx_assert(grad_approx, db_2, f'bias 2 => r: {r}, c: {c}')
-        # #
-        # for r in range(len(theta_3)):
-        #     for c in range(len(theta_3[r])):
-        #         new_theta = theta_3.copy()
-        #         new_theta[r,c] = theta_3[r,c] + epsilon
-        #         pt = J(X, y, theta_1, bias_1, theta_2, bias_2, new_theta, bias_3)
-        #         new_theta[r,c] = theta_3[r,c] - epsilon
-        #         mt = J(X, y, theta_1, bias_1, theta_2, bias_2, new_theta, bias_3)
-        #         grad_approx = (pt - mt) / (2 * epsilon)
-        #         approx_assert(grad_approx, dW_3, f'theta 3 => r: {r}, c: {c}')
-        # for r in range(len(bias_3)):
-        #     for c in range(len(bias_3[r])):
-        #         new_bias = bias_3.copy()
-        #         new_bias[r,c] = bias_3[r,c] + epsilon
-        #         pt = J(X, y, theta_1, bias_1, theta_2, bias_2, theta_3, new_bias)
-        #         new_bias[r,c] = bias_3[r,c] - epsilon
-        #         mt = J(X, y, theta_1, bias_1, theta_2, bias_2, theta_3, new_bias)
-        #         grad_approx = (pt - mt) / (2 * epsilon)
-        #         approx_assert(grad_approx, db_3, f'bias 3 => r: {r}, c: {c}')
+        weight_grads = [dW_1, dW_2, dW_3]
+        for idx, theta in enumerate([theta_1, theta_2, theta_3]):
+            grad_approx = np.zeros(theta.shape)
+            for row in range(theta.shape[0]):
+                for col in range(theta.shape[1]):
+                    new_theta = theta.copy()
+                    new_theta[row,col] += epsilon
+                    thetas = [theta_1, theta_2, theta_3]
+                    thetas[idx] = new_theta
+                    baseline_plus = forward_propagation(X, y, thetas)
+                    new_theta[row,col] -= epsilon * 2
+                    thetas = [theta_1, theta_2, theta_3]
+                    thetas[idx] = new_theta
+                    baseline_minus = forward_propagation(X, y, thetas)
+                    grad_approx[row][col] = (baseline_plus - baseline_minus) / (2 * epsilon)
+            real = (-learning_rate * weight_grads[idx]) / (-2 * learning_rate)
+            numerator = np.linalg.norm(grad_approx - real)
+            denominator = np.linalg.norm(grad_approx) + np.linalg.norm(real)
+            res = numerator / denominator
+            approx_assert(0, res, f"theta_{idx+1}", epsilon)
 
     # 5 update parameters
     theta_3 -= learning_rate * dW_3
-    bias_3 -= learning_rate * db_3
     theta_2 -= learning_rate * dW_2
-    bias_2 -= learning_rate * db_2
     theta_1 -= learning_rate * dW_1
-    bias_1 -= learning_rate * db_1
 
     # Analytics
     pass
