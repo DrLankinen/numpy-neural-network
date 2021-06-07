@@ -11,13 +11,14 @@ def sigmoid(x):
 def cost(y_hat, y):
     return np.mean([_ * _ for _ in (y_hat - y)])
 
-def forward_propagation(X, y, theta):
+def forward_propagation(X, y, theta, biases):
     theta_1, theta_2, theta_3 = theta[0], theta[1], theta[2]
-    a_1 = np.hstack((np.ones((X.shape[0],1)), X))
+    bias_1, bias_2, bias_3 = biases[0], biases[1], biases[2]
+    a_1 = np.hstack((bias_1, X))
     z_2 = a_1 @ theta_1.T
-    a_2 = np.hstack((np.ones((z_2.shape[0],1)), sigmoid(z_2)))
+    a_2 = np.hstack((bias_2, sigmoid(z_2)))
     z_3 = a_2 @ theta_2.T
-    a_3 = np.hstack((np.ones((z_3.shape[0],1)), sigmoid(z_3)))
+    a_3 = np.hstack((bias_3, sigmoid(z_3)))
     z_4 = a_3 @ theta_3.T
     a_4 = sigmoid(z_4)
     output = a_4
@@ -43,15 +44,15 @@ layer_2 = 5
 layer_3 = 4
 output = 1
 
-# bias_1 = np.random.rand(m, 1)
+bias_1 = np.random.rand(m, 1)
 
 # 5 x 2+1
 theta_1 = np.random.rand(layer_2, n+1)
-# bias_2 = np.random.rand(m, 1)
+bias_2 = np.random.rand(m, 1)
 
 # 4 x 5+1
 theta_2 = np.random.rand(layer_3, layer_2+1)
-# bias_3 = np.random.rand(m, 1)
+bias_3 = np.random.rand(m, 1)
 
 # 1 x 4+1
 theta_3 = np.random.rand(output, layer_3+1)
@@ -61,21 +62,22 @@ for i in range(steps):
     # 2 forward propagation
     # Layer 1
     # 4 x 2+1
-    a_1 = np.hstack((np.ones((X.shape[0],1)), X))
+    # a_1 = np.hstack((np.ones((X.shape[0],1)), X))
+    a_1 = np.hstack((bias_1, X))
     assert a_1.shape == (4, 3)
     # Layer 2
     # 4 x 3 @ 3 x 5 => 4 x 5
     z_2 = a_1 @ theta_1.T
     assert z_2.shape == (4, 5)
     # 4 x 5+1
-    a_2 = np.hstack((np.ones((z_2.shape[0],1)), sigmoid(z_2)))
+    a_2 = np.hstack((bias_2, sigmoid(z_2)))
     assert a_2.shape == (4, 6)
     # Layer 3
     # 4 x 6 @ 6 x 4 => 4 x 4
     z_3 = a_2 @ theta_2.T
     assert z_3.shape == (4, 4)
     # 4 x 4+1
-    a_3 = np.hstack((np.ones((z_3.shape[0],1)), sigmoid(z_3)))
+    a_3 = np.hstack((bias_3, sigmoid(z_3)))
     assert a_3.shape == (4, 5)
     # Layer 4
     # 4 x 4+1 @ 5 x 1 => 4 x 1
@@ -96,7 +98,7 @@ for i in range(steps):
     assert delta_4.shape == (4, 1)
     # Layer 3
     # 4 x 1 @ 1 x 5 => 4 x 5
-    delta_3 = delta_4 @ theta_3 * np.hstack((np.ones((z_3.shape[0], 1)), (sigmoid(z_3) * (1 - sigmoid(z_3)))))
+    delta_3 = delta_4 @ theta_3 * np.hstack((bias_3, (sigmoid(z_3) * (1 - sigmoid(z_3)))))
     assert delta_3.shape == (4, 5)
     # 1 x 4 @ 4 x 5 => 1 x 5
     dW_3 = delta_4.T @ a_3
@@ -104,7 +106,7 @@ for i in range(steps):
     # db_3 = np.sum(delta_3, axis=1, keepdims=True)
     # Layer 2
     # 4 x 4 @ 4 x 6 => 4 x 6
-    delta_2 = delta_3[:,1:] @ theta_2 * np.hstack((np.ones((z_2.shape[0], 1)), (sigmoid(z_2) * (1 - sigmoid(z_2)))))
+    delta_2 = delta_3[:,1:] @ theta_2 * np.hstack((bias_2, (sigmoid(z_2) * (1 - sigmoid(z_2)))))
     assert delta_2.shape == (4, 6)
     # 4 x 4 @ 4 x 6 => 4 x 6
     dW_2 = delta_3[:,1:].T @ a_2
@@ -117,6 +119,7 @@ for i in range(steps):
     # db_1 = np.sum(delta_2, axis=1, keepdims=True)
 
     # 4.1 gradient checking
+    biases = [bias_1, bias_2, bias_3]
     if gradient_checking:
         epsilon = 1e-3
         weight_grads = [dW_1, dW_2, dW_3]
@@ -128,11 +131,11 @@ for i in range(steps):
                     new_theta[row,col] += epsilon
                     thetas = [theta_1, theta_2, theta_3]
                     thetas[idx] = new_theta
-                    baseline_plus = forward_propagation(X, y, thetas)
+                    baseline_plus = forward_propagation(X, y, thetas, biases)
                     new_theta[row,col] -= epsilon * 2
                     thetas = [theta_1, theta_2, theta_3]
                     thetas[idx] = new_theta
-                    baseline_minus = forward_propagation(X, y, thetas)
+                    baseline_minus = forward_propagation(X, y, thetas, biases)
                     grad_approx[row][col] = (baseline_plus - baseline_minus) / (2 * epsilon)
             real = (-learning_rate * weight_grads[idx]) / (-2 * learning_rate)
             numerator = np.linalg.norm(grad_approx - real)
