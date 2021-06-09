@@ -137,9 +137,10 @@ for i in range(steps):
         gradient_checking(True, thetas.copy(), biases.copy(), [dW_1, dW_2, dW_3], epsilon)
 
     # 5 update parameters
+    # TODO: update biases
     theta_3 -= learning_rate * dW_3
     theta_2 -= learning_rate * dW_2
     theta_1 -= learning_rate * dW_1
 
-    # Analytics
+    # TODO: Analytics
     pass
